@@ -1,0 +1,27 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  role: {{ required "nodeRoleName is required" .Values.nodeRoleName | quote }}
+  amiSelectorTerms:
+    - alias: {{ .Values.amiAlias | quote }}
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ required "clusterName is required" .Values.clusterName | quote }}
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName | quote }}
+  kubelet:
+    {{- toYaml .Values.kubelet | nindent 4 }}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: {{ .Values.rootVolumeSize }}
+        volumeType: gp3
+        encrypted: true
+        deleteOnTermination: true
+  {{- with .Values.tags }}
+  tags:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}

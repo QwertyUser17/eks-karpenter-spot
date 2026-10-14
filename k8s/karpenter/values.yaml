@@ -1,0 +1,66 @@
+# Set by Terraform (karpenter.tf).
+clusterName: ""
+nodeRoleName: ""
+tags: {}
+
+amiAlias: al2023@latest
+
+instanceSizes: [large, xlarge, 2xlarge]
+
+# Higher weight wins: spot is tried first, on-demand only when no spot capacity is available.
+# Graviton is opt-in: workloads need the arch=arm64 toleration and an arm64 nodeSelector.
+nodePools:
+  spot:
+    weight: 100
+    arch: amd64
+    capacityTypes: [spot]
+    instanceFamilies: &x86 [c6i, c7i, c6a, c7a, m6i, m7i, m6a, m7a, r6i, r7i, r6a, r7a]
+    limits: {cpu: "64", memory: 256Gi}
+  on-demand:
+    weight: 10
+    arch: amd64
+    capacityTypes: [on-demand]
+    instanceFamilies: *x86
+    limits: {cpu: "32", memory: 128Gi}
+  arm64:
+    arch: arm64
+    capacityTypes: [spot, on-demand]
+    instanceFamilies: [c7g, m7g, r7g]
+    limits: {cpu: "32", memory: 128Gi}
+    taints:
+      - key: arch
+        value: arm64
+        effect: NoSchedule
+
+disruption:
+  consolidationPolicy: WhenEmptyOrUnderutilized
+  consolidateAfter: 5m
+  budgets:
+    - nodes: "1"
+
+expireAfter: 720h
+# Upper bound for a drain blocked by a PodDisruptionBudget.
+terminationGracePeriod: 1h
+
+kubelet:
+  # Prefix delegation gives every node enough IPs; without this Karpenter uses the ENI-based limit.
+  maxPods: 110
+  systemReserved:
+    cpu: 100m
+    memory: 100Mi
+    ephemeral-storage: 1Gi
+  evictionHard:
+    memory.available: 5%
+    nodefs.available: 10%
+    nodefs.inodesFree: 5%
+  evictionSoft:
+    memory.available: 10%
+    nodefs.available: 15%
+    nodefs.inodesFree: 10%
+  evictionSoftGracePeriod:
+    memory.available: 2m
+    nodefs.available: 1m30s
+    nodefs.inodesFree: 2m
+  evictionMaxPodGracePeriod: 60
+
+rootVolumeSize: 50Gi

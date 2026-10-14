@@ -1,0 +1,5 @@
+apiVersion: v2
+name: karpenter-node-pools
+description: Karpenter NodePools and EC2NodeClass for the eks-karpenter-spot cluster
+type: application
+version: 0.1.0

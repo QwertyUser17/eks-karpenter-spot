@@ -1,0 +1,43 @@
+{{- range $name, $pool := .Values.nodePools }}
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: {{ $name }}
+spec:
+  {{- with $pool.weight }}
+  weight: {{ . }}
+  {{- end }}
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      {{- with $pool.taints }}
+      taints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      expireAfter: {{ $.Values.expireAfter }}
+      terminationGracePeriod: {{ $.Values.terminationGracePeriod }}
+      requirements:
+        - key: kubernetes.io/os
+          operator: In
+          values: [linux]
+        - key: kubernetes.io/arch
+          operator: In
+          values: [{{ $pool.arch }}]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: {{ toJson $pool.capacityTypes }}
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: {{ toJson $pool.instanceFamilies }}
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: {{ toJson $.Values.instanceSizes }}
+  limits:
+    {{- toYaml $pool.limits | nindent 4 }}
+  disruption:
+    {{- toYaml $.Values.disruption | nindent 4 }}
+{{- end }}
