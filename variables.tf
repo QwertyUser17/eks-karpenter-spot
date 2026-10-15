@@ -23,9 +23,8 @@ variable "vpc_cidr" {
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
-  description = "CIDR blocks allowed to reach the public EKS API endpoint."
+  description = "CIDR blocks allowed to reach the public EKS API endpoint, e.g. your office or VPN egress IP as /32. No default: an API open to the internet should be a conscious choice."
   type        = list(string)
-  default     = ["0.0.0.0/0"]
 }
 
 variable "system_node_instance_types" {
