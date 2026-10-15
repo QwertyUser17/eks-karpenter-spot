@@ -22,5 +22,5 @@ validate:
 	terraform fmt -check -recursive
 	terraform validate
 	tflint --init
-	tflint
+	tflint --call-module-type=all
 	helm lint k8s/karpenter --set clusterName=validate,nodeRoleName=validate

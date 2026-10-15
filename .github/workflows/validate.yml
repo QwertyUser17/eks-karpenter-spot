@@ -1,0 +1,84 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
+  TERRAFORM_VERSION: 1.16.6
+  # renovate: datasource=github-releases depName=terraform-linters/tflint
+  TFLINT_VERSION: v0.64.0
+  # renovate: datasource=github-releases depName=helm/helm
+  HELM_VERSION: v4.2.1
+  # renovate: datasource=github-releases depName=yannh/kubeconform
+  KUBECONFORM_VERSION: v0.8.0
+  # renovate: datasource=docker depName=python
+  PYTHON_IMAGE_TAG: 3.14-alpine
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - run: terraform fmt -check -recursive
+
+      - run: terraform init -backend=false -input=false
+
+      - run: terraform validate
+
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+
+      - run: tflint --init
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      # all: the AWS rules also check values passed into the registry modules (instance types and so on).
+      - run: tflint --call-module-type=all --format compact
+
+  kubernetes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Render the NodePools chart and the Karpenter CRDs of the version Terraform installs
+        run: |
+          mkdir -p rendered schemas
+          helm lint k8s/karpenter --set clusterName=ci,nodeRoleName=ci
+          helm template karpenter-node-pools k8s/karpenter --set clusterName=ci,nodeRoleName=ci > rendered/node-pools.yaml
+          version=$(awk '/resource "helm_release" "karpenter_crd"/ { found = 1 } found && $1 == "version" { gsub(/"/, "", $3); print $3; exit }' karpenter.tf)
+          helm template karpenter-crd oci://public.ecr.aws/karpenter/karpenter-crd --version "$version" > schemas/crds.yaml
+
+      - name: Build JSON schemas from the Karpenter CRDs
+        run: |
+          curl -fsSLo schemas/openapi2jsonschema.py \
+            "https://raw.githubusercontent.com/yannh/kubeconform/${KUBECONFORM_VERSION}/scripts/openapi2jsonschema.py"
+          docker run --rm -v "$PWD/schemas:/schemas" -w /schemas \
+            -e FILENAME_FORMAT='{fullgroup}-{kind}-{version}' "python:${PYTHON_IMAGE_TAG}" \
+            sh -c 'pip install --quiet --root-user-action=ignore pyyaml==6.0.3 && python3 openapi2jsonschema.py crds.yaml > /dev/null'
+
+      - name: Validate against Kubernetes and CRD schemas
+        run: |
+          kubernetes=$(awk '/variable "kubernetes_version"/ { found = 1 } found && $1 == "default" { gsub(/"/, "", $3); print $3; exit }' variables.tf)
+          docker run --rm -v "$PWD:/w" -w /w "ghcr.io/yannh/kubeconform:${KUBECONFORM_VERSION}" \
+            -strict -summary -output text \
+            -kubernetes-version "${kubernetes}.0" \
+            -schema-location default \
+            -schema-location 'schemas/{{.Group}}-{{.ResourceKind}}-{{.ResourceAPIVersion}}.json' \
+            rendered/ k8s/demo-app/
