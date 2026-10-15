@@ -1,0 +1,87 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "platformAutomerge": false,
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/^k8s/demo-app/.+\\.ya?ml$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "description": "Tool versions in workflows, annotated with a '# renovate:' comment",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+[A-Z_]+: (?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "description": "pip packages installed by workflow steps",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "pip install [^\\n]*?(?<depName>[\\w.-]+)==(?<currentValue>[\\w.]+)"
+      ],
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "description": "tflint AWS ruleset plugin",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.tflint\\.hcl$/"
+      ],
+      "matchStrings": [
+        "version = \"(?<currentValue>[\\d.]+)\"\\s+source\\s+= \"github\\.com/(?<depName>[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "GitHub Actions, CI tools, the tflint ruleset and the demo image: minor, patch and digest updates merge themselves once validate passes",
+      "matchManagers": [
+        "github-actions",
+        "custom.regex",
+        "kubernetes"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "automerge": true
+    },
+    {
+      "description": "Terraform modules, providers and Helm releases change real infrastructure: review every update with terraform plan",
+      "matchManagers": [
+        "terraform"
+      ],
+      "automerge": false
+    },
+    {
+      "description": "The EKS module and its karpenter submodule share one version",
+      "matchPackageNames": [
+        "terraform-aws-modules/eks/aws"
+      ],
+      "groupName": "terraform-aws-eks"
+    },
+    {
+      "description": "Karpenter controller and CRD charts are released together",
+      "matchPackageNames": [
+        "/karpenter(-crd)?$/"
+      ],
+      "groupName": "karpenter",
+      "prBodyNotes": [
+        "Check that the new Karpenter release supports `kubernetes_version` in the compatibility matrix: https://karpenter.sh/docs/upgrading/compatibility/"
+      ]
+    }
+  ]
+}
