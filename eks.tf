@@ -75,7 +75,7 @@ module "eks" {
 
 module "vpc_cni_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "2.9.0"
+  version = "2.10.0"
 
   name = "${var.cluster_name}-vpc-cni"
 
