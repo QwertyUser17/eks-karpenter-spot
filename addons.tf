@@ -20,7 +20,7 @@ resource "helm_release" "aws_load_balancer_controller" {
   namespace  = "kube-system"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-  version    = "3.6.0"
+  version    = "3.6.1"
   wait       = true
 
   values = [yamlencode({
