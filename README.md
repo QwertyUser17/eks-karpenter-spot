@@ -6,7 +6,7 @@
 
 Terraform for an EKS cluster where apps run on Spot instances through Karpenter. On-demand is only a fallback.
 
-It's a reference implementation of a setup I've run in production. On that platform, moving stateless services to Spot this way cut compute spend by about 29%. This repo is a personal project written from scratch: same ideas, none of the original code.
+This is my approach to running apps on Spot in EKS. It grew out of real projects and has run in production, where moving stateless services to Spot this way cut compute spend by about 29%. This repository builds it again from scratch, in a better form.
 
 It's for a team that runs stateless services on EKS, pays for on-demand nodes and wants to move to Spot without trouble from interruptions. The interesting part is "Decisions and why".
 
