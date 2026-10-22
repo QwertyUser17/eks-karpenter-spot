@@ -12,7 +12,7 @@ env:
   # renovate: datasource=github-releases depName=hashicorp/terraform extractVersion=^v(?<version>.+)$
   TERRAFORM_VERSION: 1.17.0
   # renovate: datasource=github-releases depName=terraform-linters/tflint
-  TFLINT_VERSION: v0.64.0
+  TFLINT_VERSION: v0.65.0
   # renovate: datasource=github-releases depName=helm/helm
   HELM_VERSION: v4.3.1
   # renovate: datasource=github-releases depName=yannh/kubeconform
