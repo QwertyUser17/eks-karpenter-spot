@@ -17,7 +17,7 @@ resource "helm_release" "karpenter_crd" {
   namespace  = module.karpenter.namespace
   repository = "oci://public.ecr.aws/karpenter"
   chart      = "karpenter-crd"
-  version    = "1.15.0"
+  version    = "1.15.1"
 }
 
 resource "helm_release" "karpenter" {
@@ -25,7 +25,7 @@ resource "helm_release" "karpenter" {
   namespace  = module.karpenter.namespace
   repository = "oci://public.ecr.aws/karpenter"
   chart      = "karpenter"
-  version    = "1.15.0"
+  version    = "1.15.1"
   skip_crds  = true
   wait       = true
 
